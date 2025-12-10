@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>微信公众号信息查询</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            padding: 60px 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 600px;
+            width: 100%;
+            text-align: center;
+        }
+
+        h1 {
+            color: #333;
+            font-size: 32px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            background: linear-gradient(45deg, #FF6666, #FF8888);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .subtitle {
+            color: #666;
+            font-size: 16px;
+            margin-bottom: 40px;
+            line-height: 1.5;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .input-wrapper {
+            flex: 1;
+            position: relative;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 18px 20px;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            background: white;
+            outline: none;
+        }
+
+        input[type="text"]:focus {
+            border-color: #FF6666;
+            box-shadow: 0 0 0 4px rgba(255, 102, 102, 0.1);
+        }
+
+        input[type="text"]::placeholder {
+            color: #999;
+        }
+
+        .search-btn {
+            padding: 18px 40px;
+            background: linear-gradient(45deg, #FF6666, #FF8888);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(255, 102, 102, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .search-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(255, 102, 102, 0.4);
+        }
+
+        .search-btn:active {
+            transform: translateY(0);
+        }
+
+        .search-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .search-btn .btn-text {
+            transition: opacity 0.3s ease;
+        }
+
+        .search-btn .countdown-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .search-btn.countdown .btn-text {
+            opacity: 0;
+        }
+
+        .search-btn.countdown .countdown-text {
+            opacity: 1;
+        }
+
+        .loading {
+            display: none;
+            margin-top: 20px;
+            color: #FF6666;
+            font-size: 14px;
+        }
+
+        .loading.show {
+            display: block;
+        }
+
+        /* 弹窗样式 */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(5px);
+            z-index: 1000;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .modal.show {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            position: relative;
+            animation: slideUp 0.3s ease;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        .close-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 30px;
+            height: 30px;
+            background: #f5f5f5;
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            font-size: 18px;
+            color: #666;
+        }
+
+        .close-btn:hover {
+            background: #FF6666;
+            color: white;
+            transform: rotate(90deg);
+        }
+
+        .fan-count {
+            color: #FF6666;
+            font-size: 48px;
+            font-weight: 700;
+            margin: 20px 0;
+            text-align: center;
+            background: linear-gradient(45deg, #FF6666, #FF8888);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .account-info {
+            margin-top: 30px;
+        }
+
+        .info-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 15px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .info-label {
+            color: #666;
+            font-weight: 500;
+        }
+
+        .info-value {
+            color: #333;
+            font-weight: 600;
+            text-align: right;
+            max-width: 60%;
+            word-break: break-all;
+        }
+
+        .avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            margin: 0 auto 20px;
+            display: block;
+            object-fit: cover;
+            border: 3px solid #FF6666;
+        }
+
+        .error-message {
+            color: #ff4444;
+            background: #fff5f5;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+            border-left: 4px solid #ff4444;
+        }
+
+        .query-limit-info {
+            color: #999;
+            font-size: 12px;
+            margin-top: 10px;
+            transition: all 0.3s ease;
+        }
+
+        .query-limit-info.warning {
+            color: #ff4444;
+            font-weight: 600;
+        }
+
+        .countdown-timer {
+            display: inline-block;
+            background: linear-gradient(45deg, #FF6666, #FF8888);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-weight: 600;
+            min-width: 60px;
+            text-align: center;
+            margin-left: 5px;
+            animation: pulse 1s infinite;
+        }
+
+        .proxy-info {
+            margin-top: 20px;
+            padding: 15px;
+            background: #e8f4fd;
+            border-radius: 8px;
+            font-size: 12px;
+            color: #1976d2;
+            border-left: 4px solid #2196f3;
+        }
+
+        .disclaimer {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #e0e0e0;
+            font-size: 11px;
+            color: #999;
+            line-height: 1.6;
+        }
+
+        .disclaimer p {
+            margin-bottom: 5px;
+        }
+
+        .disclaimer p:last-child {
+            margin-bottom: 0;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes slideUp {
+            from {
+                transform: translateY(50px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 40px 20px;
+            }
+
+            .input-group {
+                flex-direction: column;
+            }
+
+            .search-btn {
+                width: 100%;
+            }
+
+            .fan-count {
+                font-size: 36px;
+            }
+
+            .disclaimer {
+                font-size: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>微信公众号信息查询</h1>
+        <p class="subtitle">输入公众号名称或文章链接，快速获取公众号详细信息</p>
+        
+        <div class="input-group">
+            <div class="input-wrapper">
+                <input type="text" id="searchInput" placeholder="请输入公众号名称或文章链接..." />
+            </div>
+            <button class="search-btn" id="searchBtn" onclick="searchAccount()">
+                <span class="btn-text">查询</span>
+                <span class="countdown-text"></span>
+            </button>
+        </div>
+        
+        <div class="loading" id="loading">正在查询中，请稍候...</div>
+        <div class="query-limit-info" id="queryLimitInfo">每分钟最多查询2次</div>
+        
+        <div class="proxy-info">
+            💡 使用CORS代理服务解决跨域问题，确保在本地也能正常访问API
+        </div>
+        
+        <div class="disclaimer">
+            <p>通过公开渠道获取，不涉及敏感信息，禁止提供付费服务</p>
+            <p>接口由「公众号：程序员码叔」提供，用户界面由「公众号：刘坏坏」封装</p>
+        </div>
+    </div>
+
+    <!-- 结果弹窗 -->
+    <div class="modal" id="resultModal">
+        <div class="modal-content">
+            <button class="close-btn" onclick="closeModal()">×</button>
+            <div id="modalBody">
+                <!-- 动态内容 -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 查询限制相关变量
+        let queryCount = 0;
+        let lastResetTime = Date.now();
+        let countdownInterval = null;
+        let countdownEndTime = 0;
+        const MAX_QUERIES_PER_MINUTE = 2;
+        const MINUTE_IN_MS = 60000;
+        const COOLDOWN_TIME = 30000; // 30秒冷却时间
+
+        // CORS代理服务列表
+        const PROXY_SERVERS = [
+            'https://cors-anywhere.herokuapp.com/',
+            'https://api.allorigins.win/raw?url=',
+            'https://corsproxy.io/?',
+            'https://thingproxy.freeboard.io/fetch/'
+        ];
+
+        // 支持回车键查询
+        document.getElementById('searchInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                searchAccount();
+            }
+        });
+
+        function checkQueryLimit() {
+            const now = Date.now();
+            
+            // 如果超过一分钟，重置计数器
+            if (now - lastResetTime >= MINUTE_IN_MS) {
+                queryCount = 0;
+                lastResetTime = now;
+                stopCountdown();
+                updateQueryLimitInfo();
+            }
+            
+            // 检查是否超过限制
+            if (queryCount >= MAX_QUERIES_PER_MINUTE) {
+                const remainingTime = Math.ceil((MINUTE_IN_MS - (now - lastResetTime)) / 1000);
+                return {
+                    allowed: false,
+                    message: `查询频率过快，请等待 ${remainingTime} 秒后再试`
+                };
+            }
+            
+            return { allowed: true };
+        }
+
+        function updateQueryCount() {
+            queryCount++;
+            startCountdown();
+            updateQueryLimitInfo();
+        }
+
+        function startCountdown() {
+            // 清除之前的倒计时
+            stopCountdown();
+            
+            const searchBtn = document.getElementById('searchBtn');
+            const countdownText = searchBtn.querySelector('.countdown-text');
+            
+            countdownEndTime = Date.now() + COOLDOWN_TIME;
+            searchBtn.disabled = true;
+            searchBtn.classList.add('countdown');
+            
+            countdownInterval = setInterval(() => {
+                const now = Date.now();
+                const remaining = Math.ceil((countdownEndTime - now) / 1000);
+                
+                if (remaining <= 0) {
+                    stopCountdown();
+                } else {
+                    countdownText.textContent = `${remaining}s`;
+                    updateQueryLimitInfo();
+                }
+            }, 1000);
+        }
+
+        function stopCountdown() {
+            if (countdownInterval) {
+                clearInterval(countdownInterval);
+                countdownInterval = null;
+            }
+            
+            const searchBtn = document.getElementById('searchBtn');
+            const countdownText = searchBtn.querySelector('.countdown-text');
+            
+            searchBtn.disabled = false;
+            searchBtn.classList.remove('countdown');
+            countdownText.textContent = '';
+        }
+
+        function updateQueryLimitInfo() {
+            const info = document.getElementById('queryLimitInfo');
+            const now = Date.now();
+            
+            // 如果正在倒计时，显示倒计时信息
+            if (countdownInterval && countdownEndTime > now) {
+                const remaining = Math.ceil((countdownEndTime - now) / 1000);
+                info.innerHTML = `查询冷却中<span class="countdown-timer">${remaining}s</span>`;
+                info.classList.add('warning');
+                return;
+            }
+            
+            const remaining = MAX_QUERIES_PER_MINUTE - queryCount;
+            if (remaining > 0) {
+                info.textContent = `本分钟还可查询 ${remaining} 次`;
+                info.classList.remove('warning');
+            } else {
+                const remainingTime = Math.ceil((MINUTE_IN_MS - (now - lastResetTime)) / 1000);
+                info.innerHTML = `请等待<span class="countdown-timer">${remainingTime}s</span>`;
+                info.classList.add('warning');
+            }
+        }
+
+        async function searchAccount() {
+            const input = document.getElementById('searchInput').value.trim();
+            const searchBtn = document.getElementById('searchBtn');
+            const loading = document.getElementById('loading');
+
+            if (!input) {
+                showError('请输入公众号名称或文章链接');
+                return;
+            }
+
+            // 检查查询限制
+            const limitCheck = checkQueryLimit();
+            if (!limitCheck.allowed) {
+                showError(limitCheck.message);
+                return;
+            }
+
+            // 显示加载状态
+            searchBtn.disabled = true;
+            loading.classList.add('show');
+
+            // 原始API URL
+            const originalApiUrl = `http://frp.unclecode.cn/api/wx/get_account_info?q=${encodeURIComponent(input)}`;
+
+            // 尝试使用不同的代理服务器
+            let success = false;
+            let lastError = null;
+
+            for (let i = 0; i < PROXY_SERVERS.length; i++) {
+                const proxy = PROXY_SERVERS[i];
+                let proxyUrl;
+
+                try {
+                    if (proxy.includes('allorigins')) {
+                        // allorigins 需要特殊处理
+                        proxyUrl = proxy + encodeURIComponent(originalApiUrl);
+                    } else if (proxy.includes('corsproxy.io')) {
+                        // corsproxy.io 需要特殊处理
+                        proxyUrl = proxy + encodeURIComponent(originalApiUrl);
+                    } else {
+                        // 其他代理直接拼接
+                        proxyUrl = proxy + originalApiUrl;
+                    }
+
+                    console.log(`尝试代理服务器 ${i + 1}: ${proxy}`);
+
+                    const response = await fetch(proxyUrl, {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
+                    });
+
+                    if (response.ok) {
+                        let data;
+                        const responseText = await response.text();
+                        
+                        try {
+                            data = JSON.parse(responseText);
+                        } catch (parseError) {
+                            // 如果直接解析失败，可能需要处理嵌套的JSON
+                            if (responseText.startsWith('"') && responseText.endsWith('"')) {
+                                data = JSON.parse(responseText.slice(1, -1));
+                            } else {
+                                throw parseError;
+                            }
+                        }
+
+                        if (data.code === 200) {
+                            showResult(data.data);
+                            updateQueryCount();
+                            success = true;
+                            break;
+                        } else {
+                            lastError = data.message || '查询失败';
+                        }
+                    } else {
+                        lastError = `代理服务器 ${i + 1} 响应错误: ${response.status}`;
+                    }
+                } catch (error) {
+                    console.error(`代理服务器 ${i + 1} 失败:`, error);
+                    lastError = `代理服务器 ${i + 1}: ${error.message}`;
+                }
+            }
+
+            // 如果所有代理都失败
+            if (!success) {
+                showError(`所有代理服务器都无法访问。错误信息: ${lastError}`);
+            }
+
+            searchBtn.disabled = false;
+            loading.classList.remove('show');
+        }
+
+        function showResult(data) {
+            const modalBody = document.getElementById('modalBody');
+            
+            let html = '';
+            
+            // 头像
+            if (data.roundHeadImg) {
+                html += `<img src="${data.roundHeadImg}" alt="头像" class="avatar" onerror="this.style.display='none'">`;
+            }
+            
+            // 粉丝数量 - 使用H1标签
+            html += `<h1 class="fan-count">${data.fanCount || 0} 粉丝</h1>`;
+            
+            // 账号信息
+            html += '<div class="account-info">';
+            
+            if (data.nickName) {
+                html += `
+                    <div class="info-item">
+                        <span class="info-label">公众号名称</span>
+                        <span class="info-value">${data.nickName}</span>
+                    </div>
+                `;
+            }
+            
+            if (data.alias) {
+                html += `
+                    <div class="info-item">
+                        <span class="info-label">微信号</span>
+                        <span class="info-value">${data.alias}</span>
+                    </div>
+                `;
+            }
+            
+            if (data.signature) {
+                html += `
+                    <div class="info-item">
+                        <span class="info-label">简介</span>
+                        <span class="info-value">${data.signature}</span>
+                    </div>
+                `;
+            }
+            
+            if (data.serviceType !== undefined) {
+                const serviceTypeText = data.serviceType === 1 ? '订阅号' : data.serviceType === 2 ? '服务号' : '其他';
+                html += `
+                    <div class="info-item">
+                        <span class="info-label">账号类型</span>
+                        <span class="info-value">${serviceTypeText}</span>
+                    </div>
+                `;
+            }
+            
+            if (data.verifyStatus !== undefined) {
+                const verifyStatusText = data.verifyStatus === 0 ? '未认证' : '已认证';
+                html += `
+                    <div class="info-item">
+                        <span class="info-label">认证状态</span>
+                        <span class="info-value">${verifyStatusText}</span>
+                    </div>
+                `;
+            }
+            
+            html += '</div>';
+            
+            modalBody.innerHTML = html;
+            document.getElementById('resultModal').classList.add('show');
+        }
+
+        function showError(message) {
+            const modalBody = document.getElementById('modalBody');
+            modalBody.innerHTML = `
+                <div class="error-message">
+                    <strong>查询失败</strong><br>
+                    ${message}
+                </div>
+            `;
+            document.getElementById('resultModal').classList.add('show');
+        }
+
+        function closeModal() {
+            document.getElementById('resultModal').classList.remove('show');
+        }
+
+        // 点击弹窗背景关闭
+        document.getElementById('resultModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeModal();
+            }
+        });
+
+        // ESC键关闭弹窗
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeModal();
+            }
+        });
+
+        // 初始化查询限制信息显示
+        updateQueryLimitInfo();
+
+        // 每秒更新一次查询限制信息
+        setInterval(updateQueryLimitInfo, 1000);
+    </script>
+</body>
+</html>
