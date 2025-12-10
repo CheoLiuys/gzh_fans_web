@@ -297,6 +297,16 @@
             margin-bottom: 0;
         }
 
+        .cors-warning {
+            margin-top: 15px;
+            padding: 10px;
+            background: #fff3cd;
+            border-radius: 8px;
+            font-size: 11px;
+            color: #856404;
+            border-left: 3px solid #ffc107;
+        }
+
         @keyframes pulse {
             0%, 100% { transform: scale(1); }
             50% { transform: scale(1.05); }
@@ -358,6 +368,7 @@
         
         <div class="loading" id="loading">正在查询中，请稍候...</div>
         <div class="query-limit-info" id="queryLimitInfo">每分钟最多查询2次</div>
+        
         
         <div class="disclaimer">
             <p>通过公开渠道获取，不涉及敏感信息，禁止提供付费服务</p>
@@ -503,36 +514,56 @@
             searchBtn.disabled = true;
             loading.classList.add('show');
 
-            // 构建API URL
+            // 生成随机回调函数名
+            const callbackName = 'jsonp_callback_' + Date.now() + '_' + Math.floor(Math.random() * 10000);
+            
+            // 构建JSONP请求URL
             const apiUrl = `http://frp.unclecode.cn/api/wx/get_account_info?q=${encodeURIComponent(input)}`;
 
-            // 使用fetch调用API
-            fetch(apiUrl)
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    if (data.code === 200) {
-                        showResult(data.data);
-                        // 成功查询后更新计数
-                        updateQueryCount();
-                    } else {
-                        showError(data.message || '查询失败');
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    showError('网络请求失败，请检查网络连接或稍后重试');
-                })
-                .finally(() => {
-                    if (!countdownInterval) {
-                        searchBtn.disabled = false;
-                    }
+            // 创建JSONP回调函数
+            window[callbackName] = function(data) {
+                // 清理回调函数
+                delete window[callbackName];
+                document.head.removeChild(script);
+                
+                searchBtn.disabled = false;
+                loading.classList.remove('show');
+                
+                if (data.code === 200) {
+                    showResult(data.data);
+                    updateQueryCount();
+                } else {
+                    showError(data.message || '查询失败');
+                }
+            };
+
+            // 创建script标签
+            const script = document.createElement('script');
+            script.src = apiUrl;
+            script.onerror = function() {
+                // 清理回调函数
+                delete window[callbackName];
+                document.head.removeChild(script);
+                
+                searchBtn.disabled = false;
+                loading.classList.remove('show');
+                showError('网络请求失败，请检查网络连接或稍后重试');
+            };
+
+            // 设置超时处理
+            setTimeout(function() {
+                if (window[callbackName]) {
+                    delete window[callbackName];
+                    document.head.removeChild(script);
+                    
+                    searchBtn.disabled = false;
                     loading.classList.remove('show');
-                });
+                    showError('请求超时，请稍后重试');
+                }
+            }, 10000); // 10秒超时
+
+            // 发送JSONP请求
+            document.head.appendChild(script);
         }
 
         function showResult(data) {
